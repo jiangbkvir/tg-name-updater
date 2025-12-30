@@ -3,7 +3,7 @@ services:
   tg-name-updater:
     image: jiangbkvir/tg-name-updater:latest
     container_name: tg-name-updater
-    restart: unless-stopped
+    restart: on-failure
     stdin_open: true
     tty: true
     env_file:
@@ -12,3 +12,9 @@ services:
       - TZ=Asia/Shanghai
     volumes:
       - ./session:/app/session
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "python3"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
