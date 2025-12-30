@@ -76,16 +76,27 @@ async def main():
         print('📖 获取方式: 访问 https://my.telegram.org')
         return
 
+    # 检查 session 文件是否存在
+    if not os.path.exists(SESSION_NAME + '.session'):
+        print('❌ 未检测到登录凭证 (session 文件)')
+        print('📝 请先登录:')
+        print('   docker compose -f docker-compose.login.yml run --rm login')
+        return
+
     # 创建客户端
     client = TelegramClient(SESSION_NAME, API_ID, API_HASH)
 
     try:
-        # 连接并登录（中文提示）
-        await client.start(
-            phone=lambda: input('\n📱 请输入手机号（格式：+国家码 手机号，如 +8613800138000）\n手机号: '),
-            code_callback=lambda: input('\n📨 请输入 Telegram 发送的验证码：\n验证码: '),
-            password=lambda: input('\n🔒 账号开启了两步验证\n🔑 请输入两步验证密码：\n密码: ')
-        )
+        # 连接（不自动登录，使用已有 session）
+        await client.connect()
+
+        # 检查是否已授权
+        if not await client.is_user_authorized():
+            print('❌ Session 文件无效或已过期')
+            print('📝 请重新登录:')
+            print('   docker compose -f docker-compose.login.yml run --rm login')
+            await client.disconnect()
+            return
 
         print('✅ 登录成功!\n')
 

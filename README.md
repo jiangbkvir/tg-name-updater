@@ -6,43 +6,56 @@
 
 - 每分钟自动更新 Telegram 名字
 - 显示当前时间（中国时区）
-- 支持 Docker Compose 和直接运行两种方式
 - 多平台支持（amd64/arm64）
+- 登录后自动启动服务
 
 ---
 
-## 快速开始（推荐使用 Docker Compose）
+## 快速开始
 
-### 1. 获取 API 凭证
+### 1. 下载配置文件
+
+```bash
+mkdir tg-name-updater && cd tg-name-updater
+
+# 下载 docker-compose.yml
+curl -O https://raw.githubusercontent.com/jiangbkvir/tg-name-updater/master/docker-compose.yml
+
+# 下载 docker-compose.login.yml（首次登录需要）
+curl -O https://raw.githubusercontent.com/jiangbkvir/tg-name-updater/master/docker-compose.login.yml
+
+# 下载 .env.example
+curl -O https://raw.githubusercontent.com/jiangbkvir/tg-name-updater/master/.env.example
+
+# 复制为 .env
+cp .env.example .env
+```
+
+### 2. 获取 API 凭证
 
 访问 https://my.telegram.org/auth
 - 登录后点击 "API development tools"
 - 创建应用获取 `api_id` 和 `api_hash`
 
-### 2. 克隆项目
-
-```bash
-git clone https://github.com/jiangbkvir/tg-name-updater.git
-cd tg-name-updater
-```
-
 ### 3. 配置环境变量
 
-```bash
-cp .env.example .env
-```
+编辑 `.env` 文件填入 API 凭证：
 
-编辑 `.env` 填入 API 凭证：
 ```bash
 API_ID=你的api_id
 API_HASH=你的api_hash
 ```
 
-### 4. 首次登录
+### 4. 启动服务
 
 ```bash
-chmod +x login.sh
-./login.sh
+docker compose up -d
+```
+
+**首次使用时**，如果没有登录凭证，会提示你先登录：
+
+```bash
+docker compose -f docker-compose.login.yml run --rm login
 ```
 
 按提示输入：
@@ -50,64 +63,7 @@ chmod +x login.sh
 - 验证码
 - 两步验证密码（如果设置了）
 
-### 5. 启动服务
-
-```bash
-docker compose up -d
-```
-
----
-
-## 使用方式
-
-### 方式一：Docker Compose（推荐）
-
-**优点**：配置管理方便，支持环境变量文件，易于维护
-
-```bash
-# 启动
-docker compose up -d
-
-# 查看日志
-docker compose logs -f
-
-# 停止
-docker compose down
-
-# 重启
-docker compose restart
-```
-
-### 方式二：Docker 直接运行
-
-**适合**：快速测试或不想克隆整个项目
-
-```bash
-# 创建会话目录
-mkdir -p session
-
-# 运行容器（需要先登录获取 session 文件）
-docker run -d \
-  --name tg-name-updater \
-  --restart unless-stopped \
-  -e API_ID=你的api_id \
-  -e API_HASH=你的api_hash \
-  -e TZ=Asia/Shanghai \
-  -v $(pwd)/session:/app/session \
-  jiangbkvir/tg-name-updater:latest
-```
-
-**注意**：直接运行方式需要先通过交互式容器获取 session 文件：
-
-```bash
-# 交互式登录
-docker run -it --rm \
-  -e API_ID=你的api_id \
-  -e API_HASH=你的api_hash \
-  -v $(pwd)/session:/app/session \
-  jiangbkvir/tg-name-updater:latest \
-  python3 -c "from telethon import TelegramClient; import os; client = TelegramClient('session/tg_name_updater', os.getenv('API_ID'), os.getenv('API_HASH')); client.start()"
-```
+登录成功后会**自动启动主服务**！
 
 ---
 
@@ -120,65 +76,42 @@ docker logs -f tg-name-updater
 # 查看实时更新的名字
 docker logs tg-name-updater | grep "名字已更新"
 
-# 停止容器
+# 停止服务
 docker compose down
-# 或
-docker stop tg-name-updater && docker rm tg-name-updater
+
+# 重启服务
+docker compose restart
 
 # 重新登录
 rm -rf session/*
-./login.sh
+docker compose -f docker-compose.login.yml run --rm login
 
 # 修改原始名字
 echo "你的新名字" > session/original_name.txt
-docker restart tg-name-updater
+docker compose restart
 ```
 
 ---
 
-## 项目结构
+## 重要说明
 
-```
-.
-├── Dockerfile
-├── docker-compose.yml
-├── tg_name_update.py      # 核心程序
-├── login.sh               # 登录脚本
-├── start.sh               # 一键启动脚本
-├── .env.example           # 配置模板
-├── .env                   # 配置文件（需创建）
-├── session/               # 会话目录（自动生成）
-│   ├── tg_name_updater.session  # 登录后生成
-│   └── original_name.txt        # 原始名字
-└── README.md
-```
+### 关于 Session 文件
 
----
+- **Session 文件** 是 Telegram 登录后的凭证，保存在 `session/tg_name_updater.session`
+- **首次使用必须先登录** 才能生成 session 文件
+- **Session 文件丢失** 需要重新登录
 
-## 镜像信息
+### 镜像信息
 
 - **镜像地址**: `jiangbkvir/tg-name-updater:latest`
 - **支持平台**: linux/amd64, linux/arm64
 - **基础镜像**: python:3.11-slim
 - **镜像大小**: ~150MB
 
----
+### 相关链接
 
-## 开发相关
-
-### 构建本地镜像
-
-```bash
-docker build -t tg-name-updater:local .
-```
-
-### 构建多平台镜像并推送
-
-```bash
-docker buildx create --use
-docker buildx build --platform linux/amd64,linux/arm64 \
-  -t jiangbkvir/tg-name-updater:latest --push .
-```
+- **Docker Hub**: https://hub.docker.com/r/jiangbkvir/tg-name-updater
+- **GitHub**: https://github.com/jiangbkvir/tg-name-updater
 
 ---
 

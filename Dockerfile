@@ -24,9 +24,13 @@ RUN pip3 install --no-cache-dir \
 
 # 复制脚本
 COPY tg_name_update.py /app/
+COPY entrypoint.sh /app/entrypoint.sh
 
 # 设置时区
 ENV TZ=Asia/Shanghai
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-CMD ["python3", "tg_name_update.py"]
+# 设置 entrypoint
+RUN chmod +x /app/entrypoint.sh
+
+ENTRYPOINT ["/app/entrypoint.sh"]
