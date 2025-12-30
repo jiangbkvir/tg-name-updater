@@ -1,0 +1,62 @@
+services:
+  # 登录服务（首次使用）
+  login:
+    image: jiangbkvir/tg-name-updater:latest
+    container_name: tg-name-updater-login
+    stdin_open: true
+    tty: true
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./session:/app/session
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/app/project
+    working_dir: /app/project
+    command: >
+      python3 -c "
+      from telethon import TelegramClient
+      from telethon.errors import SessionPasswordNeededError
+      import os
+      import asyncio
+      import subprocess
+
+      async def login():
+          client = TelegramClient('/app/session/tg_name_updater', int(os.getenv('API_ID')), os.getenv('API_HASH'))
+          await client.connect()
+
+          if not await client.is_user_authorized():
+              print('📱 请输入手机号（格式：+8613800138000）')
+              phone = input('手机号: ')
+
+              print('🔐 正在发送验证码...')
+              await client.send_code_request(phone)
+
+              print('📨 请输入 Telegram 发送的验证码：')
+              code = input('验证码: ')
+
+              try:
+                  await client.sign_in(phone, code)
+              except SessionPasswordNeededError:
+                  print('🔒 账号开启了两步验证')
+                  print('🔑 请输入两步验证密码：')
+                  password = input('密码: ')
+                  await client.sign_in(password=password)
+
+          me = await client.get_me()
+          print(f'✅ 登录成功! 用户: {me.first_name}')
+          print('💾 Session 文件已保存')
+          await client.disconnect()
+
+          print('🚀 正在启动主服务...')
+          result = subprocess.run(['docker', 'compose', 'up', '-d'], capture_output=True, text=True)
+          if result.returncode == 0:
+              print('✅ 主服务已启动!')
+              print('📊 查看日志: docker logs -f tg-name-updater')
+          else:
+              print('❌ 启动失败，请手动运行: docker compose up -d')
+              print(result.stderr)
+
+      asyncio.run(login())
+      "
