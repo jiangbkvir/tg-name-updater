@@ -1,5 +1,4 @@
 services:
-  # 主服务
   tg-name-updater:
     image: jiangbkvir/tg-name-updater:latest
     container_name: tg-name-updater
@@ -18,3 +17,22 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  login:
+    image: jiangbkvir/tg-name-updater:latest
+    container_name: tg-name-updater-login
+    stdin_open: true
+    tty: true
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./session:/app/session
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/app/project
+    working_dir: /app/project
+    profiles:
+      - login
+    entrypoint: ["python3"]
+    command: ["/app/project/login.py"]
