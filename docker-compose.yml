@@ -1,0 +1,18 @@
+services:
+  tg-name-updater:
+    build:
+      context: .
+      args:
+        - https_proxy=http://host.docker.internal:6152
+        - http_proxy=http://host.docker.internal:6152
+        - all_proxy=socks5://host.docker.internal:6153
+    container_name: tg-name-updater
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./session:/app/session
