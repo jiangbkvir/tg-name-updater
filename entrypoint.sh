@@ -13,7 +13,7 @@ if [ ! -f "$SESSION_FILE" ]; then
     echo "⚠️  未检测到登录凭证 (session 文件)"
     echo ""
     echo "📝 请先登录:"
-    echo "   docker compose -f docker-compose.login.yml run --rm login"
+    echo "   docker compose -f docker-compose.login.yml run --rm -it login"
     echo ""
     echo "=========================================="
     exit 1

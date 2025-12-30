@@ -55,7 +55,7 @@ docker compose up -d
 **首次使用时**，如果没有登录凭证，会提示你先登录：
 
 ```bash
-docker compose -f docker-compose.login.yml run --rm login
+docker compose -f docker-compose.login.yml run --rm -it login
 ```
 
 按提示输入：
@@ -84,7 +84,7 @@ docker compose restart
 
 # 重新登录
 rm -rf session/*
-docker compose -f docker-compose.login.yml run --rm login
+docker compose -f docker-compose.login.yml run --rm -it login
 
 # 修改原始名字
 echo "你的新名字" > session/original_name.txt
