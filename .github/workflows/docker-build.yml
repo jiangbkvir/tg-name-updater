@@ -1,20 +1,19 @@
-name: Build and Push Docker Image
+name: Build & Push Docker Image
 
 on:
   push:
     branches:
       - master
-    paths:
-      - 'Dockerfile'
-      - 'entrypoint.sh'
-      - 'tg_name_update.py'
-      - 'README.md'
-      - '.github/workflows/docker.yml'
+    tags:
+      - 'v*'
+    paths-ignore:
+      - README.md
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: 拉取代码
         uses: actions/checkout@v4
@@ -25,11 +24,32 @@ jobs:
       - name: 启用 Buildx
         uses: docker/setup-buildx-action@v3
 
+      # 登录 Docker Hub
       - name: 登录 Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 登录 GHCR
+      - name: 登录 GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 自动生成 tag：latest + vX.Y.Z
+      - name: 生成镜像标签
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            jiangbkvir/tg-name-updater
+            ghcr.io/jiangbkvir/tg-name-updater
+          tags: |
+            type=raw,value=latest
+            type=ref,event=tag
 
       - name: 构建并推送镜像
         uses: docker/build-push-action@v6
@@ -37,14 +57,6 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: jiangbkvir/tg-name-updater:latest
+          tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: 更新 Docker Hub README
-        uses: peter-evans/dockerhub-description@v4
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: jiangbkvir/tg-name-updater
-          readme-filepath: ./README.md
